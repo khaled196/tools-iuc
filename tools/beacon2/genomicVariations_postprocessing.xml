@@ -1,0 +1,96 @@
+<tool id="beacon2_genomic_variations_postprocessing" name="Beacon2 genomicVariations postprocessing" version="@TOOL_VERSION@+galaxy@VERSION_SUFFIX@" profile="@PROFILE@">
+    <description>add caseLevelData or variantLevelData to existing Beacon genomic variations</description>
+    <macros>
+        <import>macros.xml</import>
+    </macros>
+    <expand macro="xrefs"/>
+    <expand macro="requirements"/>
+    <expand macro="creators"/>
+    <expand macro="stdio"/>
+    <expand macro="version_command"/>
+
+    <command detect_errors="exit_code"><![CDATA[
+@BEACON2_RUNTIME_SETUP@ &&
+
+ln -s  '$input_csv' 'input.csv' &&
+
+genomicVariations_postprocessing.py \
+    --input 'input.csv' \
+    --datasetId '${dataset_id}' \
+    > output.log 2>&1
+    ]]></command>
+
+    <!-- SINGLE <configfiles> SECTION -->
+    <configfiles>
+        <!-- Tool-specific conf.py – HARD-CODED for this single-purpose tool -->
+        <configfile name="conf_py"><![CDATA[
+@BEACON2_CONF_BASE_ADVANCED@
+
+# Tool-specific settings for genomicVariations_postprocessing
+# This tool ONLY works on genomicVariations
+entry_type = 'genomicVariations'
+record_type = 'genomicVariation'
+collection_name = 'genomicVariations'
+        ]]></configfile>
+
+        <!-- Credentials from user preferences -->
+        <configfile name="credentials"><![CDATA[
+#set $db_auth_source = $__user__.extra_preferences.get('beacon2_account|db_auth_source', "")
+#set $db_user = $__user__.extra_preferences.get('beacon2_account|db_user', "")
+#set $db_password = $__user__.extra_preferences.get('beacon2_account|db_password', "")
+#if $db_user == "" or $db_password == "" or $db_auth_source == "":
+    #set $db_auth_source = "admin"
+    #set $db_user = "root"
+    #set $db_password = "example"
+#end if
+{
+    "db_auth_source": "$db_auth_source",
+    "db_user": "$db_user",
+    "db_password": "$db_password"
+}
+        ]]></configfile>
+    </configfiles>
+
+    <inputs>
+        <param name="input_csv" type="data" format="csv" label="genomicVariations CSV for postprocessing"/>
+        <expand macro="dataset_id"/>
+        <!-- Full advanced options (single source of truth, includes custom conf.py) -->
+        <!-- entry_type is hard-coded above because this tool is single-purpose -->
+        <expand macro="advanced_section"/>
+    </inputs>
+
+    <outputs>
+        <expand macro="log_output"/>
+    </outputs>
+
+    <tests>
+        <test>
+            <param name="input_csv" value="test-data/genomicVariations.csv" />
+            <param name="dataset_id" value="test_dataset" />
+            <output name="log" compare="contains">
+                <assert_contents>
+                    <has_text text="post-processing" />
+                    <has_text text="completed" />
+                    <has_text text="success" />
+                </assert_contents>
+            </output>
+        </test>
+    </tests>
+
+    <help><![CDATA[
+**Beacon2 genomicVariations Post-processing**
+
+Adds `caseLevelData` or `variantLevelData` to genomic variations that have already been loaded into the Beacon MongoDB.
+
+**New flexible options (Advanced section):**
+- Reference genome
+- Case-level data generation
+- Maximum rows to process (0 = unlimited)
+- Allele frequency & population settings
+- Verbose logging
+- **Custom conf.py** (upload your own optimized config file for full control)
+
+MongoDB credentials are read automatically from your Galaxy user preferences.
+    ]]></help>
+    <expand macro="citations"/>
+</tool>
